@@ -1,0 +1,40 @@
+body{
+	color:#111;
+	background-color:#dec;
+}
+.emscripten_border{
+	position:relative;
+}
+#spinner{
+	position:absolute;
+	top:20px;
+	left:20px;
+	border:2px solid #111;
+	height:1em;
+	width:1em;
+	animation:rotation 1.2s linear infinite;
+}
+@keyframes rotation{
+	from{transform:rotate(0deg);}
+	to{transform:rotate(360deg);}
+}
+#status{
+	position:absolute;
+	top:20px;
+	left:50px;
+}
+#canvas{
+	position:absolute;
+	top:0;
+	left:0;
+}
+#output{
+	font-family:monospace;
+	width:80%;
+}
+#header{
+	margin-bottom:1em;
+}
+#footer{
+	margin-top:1em;
+}

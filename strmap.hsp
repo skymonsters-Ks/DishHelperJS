@@ -1,0 +1,88 @@
+#module
+
+#deffunc initStrmap
+
+#enum global STR_DUMMY = 0
+	strs(STR_DUMMY) = "**********"
+
+#enum global STR_INFO
+	strs(STR_INFO) = "Information"
+
+#enum global STR_ERROR
+	strs(STR_ERROR) = "Error"
+
+#enum global STR_OBJFONT
+	strs(STR_OBJFONT) = "Meiryo UI"
+
+#enum global STR_SCRIPTPATH
+	strs(STR_SCRIPTPATH) = "ソーススクリプト"
+
+#enum global STR_DEFSRCINPUT
+	strs(STR_DEFSRCINPUT) = "HSPファイルを入力またはドロップ"
+
+#enum global STR_REFBTN
+	strs(STR_REFBTN) = "..."
+
+#enum global STR_OUTDIR
+	strs(STR_OUTDIR) = "出力フォルダ"
+
+#enum global STR_DEBUGOUT
+	strs(STR_DEBUGOUT) = "デバッグモード出力"
+
+#enum global STR_AXONLYOUT
+	strs(STR_AXONLYOUT) = ".axのみ出力"
+
+#enum global STR_HTMLINDEX
+	strs(STR_HTMLINDEX) = ".htmlのファイル名をindexに"
+
+#enum global STR_CANVASRESIZE
+	strs(STR_CANVASRESIZE) = "canvasを自動リサイズ"
+
+#enum global STR_HELP
+	strs(STR_HELP) = "ヘルプ"
+
+#enum global STR_EXPORT
+	strs(STR_EXPORT) = "出力"
+
+#enum global STR_HSPSCRIPT
+	strs(STR_HSPSCRIPT) = "HSP3スクリプト"
+
+#enum global STR_NOSCRIPT
+	strs(STR_NOSCRIPT) = "ソーススクリプトがありません"
+
+#enum global STR_NOOUTDIR
+	strs(STR_NOOUTDIR) = "出力フォルダが指定されていません"
+
+#enum global STR_INVALIDFOLDER
+	strs(STR_INVALIDFOLDER) = "%s は無効なフォルダです"
+
+#enum global STR_INVALIDDIR_DISHDATA
+	strs(STR_INVALIDDIR_DISHDATA) = "OutDataFolder と OutDishFolder は異なる必要があります"
+
+#enum global STR_ERRCOMPILE
+	strs(STR_ERRCOMPILE) = "コンパイルエラーが発生しました"
+
+#enum global STR_INVALIDRUNTIME
+	strs(STR_INVALIDRUNTIME) = "スクリプトは hsp3dish.as または hgimg4.as をインクルードする必要があります"
+
+#enum global STR_MAKEAX
+	strs(STR_MAKEAX) = "%s を作成しました"
+
+#enum global STR_FAILCOPYAX
+	strs(STR_FAILCOPYAX) = "%s のコピーに失敗しました"
+
+#enum global STR_FAILMAKEDIR
+	strs(STR_FAILMAKEDIR) = "フォルダ %s の作成に失敗しました"
+
+#enum global STR_FILENOTEXIST
+	strs(STR_FILENOTEXIST) = "ファイル %s がありません"
+
+#enum global STR_SUCCESSEXPORT
+	strs(STR_SUCCESSEXPORT) = "出力が完了しました"
+
+	return
+	
+#defcfunc strmap int _i
+	return strs(_i)
+
+#global

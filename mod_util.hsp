@@ -1,0 +1,474 @@
+
+#define global ctype HIWORD(%1) ((%1 >> 16) & 0xffff)
+#define global ctype LOWORD(%1) (%1 & 0xffff)
+#define global ctype MAKELONG(%1,%2) ((%1) & $FFFF | (%2) << 16)
+#define global ctype RGB(%1,%2,%3) (%1 | %2 << 8 | %3 << 16)
+
+/*
+	文字列から指定の文字（複数可）を取り除く
+	
+	val = strtrim2(p1, p2)
+	p1  : 元の文字列
+	p2  : 取り除く文字
+	val : 結果の文字列
+	p2 が "abc" だと "a", "b", "c" の文字が取り除かれる。2バイト文字は指定不可。
+*/
+#module
+
+#defcfunc strtrim2 str _txt, str _trim
+	res = _txt
+	txt = _txt
+	ts = _trim
+	repeat strlen(ts)
+		if (instr(txt, , strmid(ts, cnt, 1)) >= 0) {
+			res = strtrim(res, 3, peek(ts, cnt))
+		}
+	loop
+	return res
+
+#global
+
+/*
+	複数行の文字列の行を順番に取得するモジュール
+	
+	newmod mv, nexliner, p1
+	mv : モジュール変数
+	p1 : 複数行の文字列
+	文字列を登録する。stat にモジュール変数のインデックスが返る。
+	
+	getNextLine mv, p1
+	mv : モジュール変数
+	p1 : 行の文字列が入る変数
+	この命令を呼ぶ度に順番に行を取得できる。
+	最終行を取得すると stat に 1 が、それ以外は 0 が返る。
+	行が増えるほど noteget より高速に処理できる。
+	
+	modterm mv
+	mv : モジュール変数
+	登録した文字列を破棄する。
+*/
+#module nexliner buf, index, len
+
+#modinit str _buf
+	buf = _buf
+	index = 0
+	len = strlen(buf)
+	mref id, 2
+	return id
+
+#modfunc getNextLine var _res
+	if (index >= len) : return 1
+	getstr _res, buf, index
+	index += strsize
+	return 0
+
+#global
+
+/*
+	文字列を連結（自動拡張）・取得するモジュール
+
+	newmod mv, vlstring, p1
+	mv : モジュール変数
+	p1 : メモリブロックサイズ（byte）
+	文字列バッファを初期化する。
+	ブロックサイズが大きいほどメモリ消費も大きいが拡張回数が減る。
+	stat にモジュール変数のインデックスが返る。
+	
+	catString mv, p1
+	mv : モジュール変数
+	p1 : 連結する文字列
+	文字列を連結する。stat に連結後の文字列長が返る。
+	
+	res = getString(mv)
+	mv  : モジュール変数
+	res : 連結された文字列
+	連結された文字列を取得する。
+	
+	modterm mv
+	mv : モジュール変数
+	文字列バッファを破棄する。
+
+*/
+#module vlstring buf, ptr, block, lim
+
+#modinit int _block
+	sdim buf, _block
+	ptr = 0
+	block = _block
+	lim = _block
+	mref id, 2
+	return id
+
+#modfunc catString str _s
+	len = strlen(_s)
+	while (ptr + len >= lim)
+		lim += block
+		memexpand buf, lim
+	wend
+	poke buf, ptr, _s
+	ptr += len
+	return ptr
+
+#modcfunc getString
+	return buf
+
+#global
+
+/*
+	引用符つき文字列分割、取得モジュール
+	
+	splitString p1, p2, p3, p4
+	p1      : 分割する文字列
+	p2[' '] : 分割の文字コード
+	p3['"'] : 引用符の文字コード
+	p4['\'] : エスケープの文字コード
+	p1 の文字列を p2 の文字で分割する。引用符 p3 で囲まれた文字列は p2 の文字があっても分割されない。
+	分割後引用符は除かれる。引用符自体を文字列に用いる場合は直前にエスケープ p4 を置く。
+	stat に分割数が返る。分割された文字列は下の getSplitString で取得する。
+	
+	var = getSplitString( p1 )
+	p1 : 分割文字列のインデックス
+*/
+#module
+
+#define global splitString(%1, %2=' ', %3='\"', %4='\\') splitString_ %1, %2, %3, %4
+
+#deffunc splitString_ str _src, int _delim, int _quot, int _esc
+	src = _src
+	sdim out, strlen(src) + 2
+	dim p_src
+	p_dst = 1
+	index = 1
+	dim num
+	dim qf
+	if (peek(src) == _quot) {
+		qf = 1
+		p_src++
+	}
+	repeat
+		c = peek(src, p_src)
+		if (c == 0) {
+			num++
+			break
+		} else : if (c == _delim) {
+			if (qf) {
+				poke out, p_dst, _delim
+				p_dst++
+			} else {
+				if (peek(out, p_dst - 1)) {
+					poke out, p_dst
+					p_dst++
+					num++
+					index(num) = p_dst
+				}
+			}
+		} else : if (c == _quot) {
+			if (peek(src, p_src - 1) == _esc) {
+				poke out, p_dst - 1, _quot
+			} else {
+				qf ^= 1
+			}	
+		} else {
+			poke out, p_dst, c
+			p_dst++
+		}
+		p_src++
+	loop
+	if (peek(out, p_dst - 1)) : else {
+		if (num > 0) : num--
+	}
+	return num
+
+#defcfunc getSplitString int id
+	if (id < num) {
+		getstr res, out, index(id)
+	} else {
+		res = ""
+	}
+	return res
+
+#global
+
+/*
+	getBothSides p1, p2, p3
+	p1      : 左辺の文字列が返る変数
+	p2      : 右辺の文字列が返る変数
+	p3      : 等式の文字列
+	p4["="] : 分割文字列
+	分割文字列で分けられた両辺の文字列を取得する
+*/
+#module
+
+#define global getBothSides(%1, %2, %3, %4="=") getBothSides_ %1, %2, %3, %4
+
+#deffunc getBothSides_ var _ls, var _rs, str _form, str _delim
+	src = _form
+	_rs = ""
+	i = instr(src, , _delim)
+	if (i > 0) {
+		getstr _rs, src, i + strlen(_delim)
+		_ls = strmid(src, 0, i)
+	} else {
+		_ls = src
+	}
+	return
+
+#global
+
+/*
+	getSplitList p1, p2
+	p1    : 結果が入る文字型変数
+	p2    : 元の文字列
+	p3[0] : 区切り文字コード（0 で改行区切り）
+	p2 を p3 で分割した文字列が改行区切りで p1 に返る。
+	区切られた要素は両端の半角スペースが取り除かれ、空の要素はスキップされる。
+	要素の数が stat に返る。
+*/
+#module
+
+#const MEM_BLOCK 4096
+
+#deffunc getSplitList var _out, str _in, int _delim, local _src
+	_src = _in
+	sdim _out
+	newmod list, vlstring, MEM_BLOCK
+	p = 0
+	num = 0
+	len = strlen(_src)
+	repeat
+		getstr ts, _src, p, _delim
+		p += strsize
+		ts = strtrim(ts, 0, ' ')
+		if (ts != "") {
+			catString list, ts + "\n"
+			num++
+		}
+		if (p >= len) : break
+	loop
+	_out = getString(list)
+	delmod list
+	poke _out, strlen(_out) - strlen("\n")
+	return num
+
+#global
+
+/*
+	listFolders p1, p2
+	p1    : 結果が入る変数
+	p2[0] : サブフォルダの検索階層数（0でカレントのみ）
+	カレントフォルダとサブフォルダにある全てのファイルの相対パスを改行区切りで取得する。
+	p1 の変数は内部で文字列型として初期化される。再帰処理しているためあまり深い階層までいくとエラーが出るかも。
+	3,4番目の引数は内部で使用するため指定禁止。
+	stat にファイル数が返る。
+*/
+#module
+
+#const MEM_BLOCK 4096
+
+#define global listFolders(%1, %2=0, %3="", %4=0) listFolders_ %1, %2, %3, %4
+
+#deffunc listFolders_ var _out, int _max, str _dir, int _depth, local _id
+	if (_depth == 0) {
+		num = 0
+		sdim _out
+		newmod list, vlstring, MEM_BLOCK
+	}
+	dirlist buf, _dir + "*", 1 ; フォルダ以外
+	newmod nl, nexliner, buf
+	_id = stat
+	repeat
+		getNextLine nl(_id), ls
+		if (stat) {
+			delmod nl(_id)
+			break
+		}
+		catString list, _dir + ls + "\n"
+		num++
+	loop
+	if (_depth < _max) {
+		dirlist buf, _dir + "*", 5 ; フォルダのみ
+		newmod nl, nexliner, buf
+		_id = stat
+		repeat
+			getNextLine nl(_id), ls
+			if (stat) {
+				delmod nl(_id)
+				break
+			}
+			listFolders _out, _max, _dir + ls + "\\", _depth + 1
+		loop
+	}
+	if (_depth == 0) {
+		_out = getString(list)
+		delmod list
+		sdim buf
+		poke _out, strlen(_out) - strlen("\n")
+	}
+	return num
+
+#global
+
+/*
+	getTextSize p1, p2
+	p1 : 幅高さのサイズが変える配列変数
+	p2 : 文字列
+	文字列の描画サイズを取得する。
+	p1(0) に 0 より大きな整数を指定するとその幅で折り返したサイズが返る。
+*/
+#module
+
+#uselib "user32"
+#func DrawText "DrawTextW" int, wstr, int, var, int
+
+#deffunc getTextSize array _res, str _msg, local _f
+	if (0 >= _res) {
+		dim _res, 4
+		_f = 0
+	} else {
+		_f = 0 + _res
+		dim _res, 4
+		_res(2) = _f
+		_f = $10/*DT_WORDBREAK*/
+	}
+	DrawText hdc, _msg, -1, _res, _f + $400/*DT_CALCRECT*/
+	_res = _res(2), _res(3)
+	return
+
+#global
+
+/*
+	簡易ini形式データ読込モジュール
+	
+	loadIni p1
+	p1 : 読み込むファイル名
+	
+	getIniData p1, p2
+	p1 : キー名
+	p2 : デフォルト値
+	p1 のキー名の値を返す（文字列）
+	p1 のキーがない場合は p2 を返す
+*/
+#module
+
+#deffunc loadIni str _fn
+	fn = _fn
+	exist fn
+	fs = strsize
+	if (fs == -1) {
+		exists = 0
+	} else {
+		sdim fd, fs
+		bload fn, fd
+		exists = 1
+	}
+	return
+
+#defcfunc getIniData str _key, str _def
+	res = ""
+	if (exists) {
+		p = 0
+		repeat
+			if (p == fs) : break
+			getstr ts, fd, p
+			p += strsize
+			if (peek(ts) == ';') : continue
+			getstr ts, ts, 0, '='
+			pp = strsize
+			if (strtrim(ts) == _key) {
+				getstr ts, ts, pp
+				res = strtrim(ts)
+				break
+			}
+		loop
+	}
+	if (res == "") {
+		res = _def
+	}
+	return res
+
+#global
+
+#module
+
+#uselib "shlwapi"
+#func PathIsDirectory "PathIsDirectoryW" wstr
+; #func PathSearchAndQualify "PathSearchAndQualifyW" wstr, wptr, int  ; 無言か応答なしで落ちる…
+#func PathSearchAndQualify "PathSearchAndQualifyA" str, sptr, int
+#uselib "kernel32"
+#func CopyFile "CopyFileW" wstr, wstr, int
+#uselib "shell32"
+#func SHCreateDirectoryEx "SHCreateDirectoryExW" int, wstr, int
+
+/*
+	isFullPath p1
+	p1 : パス
+	p1 がフルパス形式の文字列なら 1、そうでなければ 0 が返る
+*/
+#defcfunc isFullPath str _path
+	p = _path
+	c = peek(p, 2)
+	return (peek(p, 1) == ':') && (c == '\\' || c == '/')
+
+/*
+	dirExists p1
+	p1 : ディレクトリ（フルパス）
+	p1 が存在しているなら 1、そうでなければ 0 が返る
+*/
+#defcfunc dirExists str _dir
+	PathIsDirectory _dir
+	return stat > 0
+
+/*
+	toFullPath p1
+	p1 : パス
+	p1 をフルパスに変換して返す
+*/
+#defcfunc toFullPath str _path
+	sdim p, 512
+	sdim pp, 1024
+	PathSearchAndQualify _path, varptr(p), 512
+	pp = cnvatos(p)
+	return strtrim(pp, 2, '\\')
+
+/*
+	bcopyEx p1, p2, p3
+	p1   : コピー元のファイル
+	p2   : コピー先のファイル
+	p3[0]: コピー先が存在している場合のフラグ
+	p1 を p2 にコピーする。
+	p3 が 1 場合、p2 が存在しているとコピーは失敗する。
+	成功すると 0 以外、失敗すると 0 が返る。
+*/
+#deffunc bcopyEx str _sf, str _df, int _f
+	CopyFile _sf, _df, _f
+	return stat
+
+/*
+	makeDir p1
+	p1 : ディレクトリ（フルパス）
+	p1 を作成する。多重層の作成が可能。
+	成功もしくは既に存在済みの場合は 1、それ以外は 0 が返る。
+	パスの中に不正な文字があると途中まで作成される( 0 が返る）
+*/
+#deffunc makeDir str _dir
+	if (dirExists(_dir)) : return 1
+	SHCreateDirectoryEx 0, _dir, 0
+	return stat == 0
+
+#global
+
+#module
+
+#deffunc setWinText int _wh, str _txt, local _ts
+	sdim _ts, strlen(_txt) * 2 + 2
+	cnvstow _ts, _txt
+	sendmsg _wh, $c/*WM_SETTEXT*/, , varptr(_ts)
+	return
+
+#defcfunc getWinText int _wh, local _ts
+	sendmsg _wh, $e/*WM_GETTEXTLENGTH*/
+	sdim _ts, stat * 2 + 2
+	sendmsg _wh, $d/*WM_GETTEXT*/, stat + 1, varptr(_ts)
+	return cnvwtos(_ts)
+
+#global

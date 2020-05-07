@@ -1,0 +1,157 @@
+#module mod_dpi \
+	winid, winsx, winsy, rate, fname, fsize, objx, objy, objw, objh, num
+
+#uselib "gdi32"
+#func GetDeviceCaps "GetDeviceCaps" int, int
+#uselib "user32"
+#func SetProcessDPIAware "SetProcessDPIAware"
+#func GetDpiForWindow "GetDpiForWindow" int
+#func SetWindowPos "SetWindowPos" int, int, int, int, int, int, int
+#func GetWindowRect "GetWindowRect" int, int
+#func ScreenToClient "ScreenToClient" int, int
+#func MoveWindow "MoveWindow" int, int, int, int, int, int
+#uselib "shcore"
+#func SetProcessDpiAwareness "SetProcessDpiAwareness" int
+
+#const DPI_DEF 96
+
+#define ctype dpi_cnv(%1) (rate * %1)
+
+#deffunc _dpi_init
+	; debugではAPIで、exeではマニフェストでHighDPI設定する
+	#ifdef _debug
+		if varptr(SetProcessDpiAwareness) {
+			SetProcessDpiAwareness 2/*PROCESS_PER_MONITOR_DPI_AWARE*/
+		} else : if varptr(SetProcessDPIAware) {
+			SetProcessDPIAware
+		}
+	#endif
+	return
+
+#defcfunc local getDefRate
+	if (varptr(GetDpiForWindow)) {
+		return double(GetDpiForWindow(hwnd)) / DPI_DEF
+	}
+	return double(GetDeviceCaps(hdc, 88/*LOGPIXELSX*/)) / DPI_DEF
+
+; screen直後に呼び出す（操作中のウィンドウが対象）
+#modinit int _w, int _h, int _onum
+	winid = ginfo_sel
+	winsx = _w
+	winsy = _h
+	rate = getDefRate()
+	fname = msgothic
+	fsize = 12
+	; _onum: ウィンドウで使用するオブジェクト数（超えても一応自動確保はされる）
+	dim objx, _onum
+	dim objy, _onum
+	dim objw, _onum
+	dim objh, _onum
+	num = 0
+	return
+
+; 操作中のウィンドウが対象
+#modfunc dpi_font str _fn, int _sz
+	fname = _fn
+	fsize = _sz
+	font fname, dpi_cnv(fsize)
+	objmode objmode_usefont
+	return
+
+; オブジェクト設置直後に呼び出す
+#modfunc dpi_objpool int _mode, local _oi, local _r
+	_oi = stat
+	dim _r, 4
+	GetWindowRect objinfo_hwnd(_oi), varptr(_r)
+	if (_mode > 0) {
+		; _mode: (1)スタティックテキスト, (2)チェックボックス
+		objw(_oi) = -(_mode)
+		objh(_oi) = 0
+	} else {
+		objw(_oi) = _r(2) - _r(0)
+		objh(_oi) = _r(3) - _r(1)
+	}
+	ScreenToClient hwnd, varptr(_r)
+	objx(_oi) = _r(0)
+	objy(_oi) = _r(1)
+	num++
+	return _oi
+
+; WM_DPICHANGED のジャンプ先で呼び出す
+#modfunc dpi_wmchanged local _dpi, local _lprm, local _t
+	_dpi = LOWORD(wparam)
+	dupptr _lprm, lparam, 16
+	_t = ginfo_sel
+	gsel winid
+	dpi_change thismod, _dpi, _lprm(0), _lprm(1)
+	gsel _t
+	return
+
+#modfunc dpi_resize int _w, int _h
+	winsx = _w
+	winsy = _h
+	return
+
+#modfunc dpi_objmove int _oi, int _x, int _y, int _w, int _h
+	objx(_oi) = _x
+	objy(_oi) = _y
+	if (objw(_oi) >= 0) { ; スタティックテキスト, チェックボックス以外
+		objw(_oi) = _w
+		objh(_oi) = _h
+	}
+	return
+
+#modcfunc dpi_rate
+	return rate
+
+; 操作中のウィンドウが対象
+#modfunc dpi_change int _dpi, int _px, int _py, \
+	local _x, local _y, local _w, local _h, local _bm, local _oh, local _sz
+
+	; ウィンドウの位置・サイズ変更
+	if (_dpi > 0) {
+		rate = double(_dpi) / DPI_DEF
+		_x = _px
+		_y = _py
+	} else {
+		rate = getDefRate()
+		_x = ginfo_wx1
+		_y = ginfo_wy1
+	}
+	SetWindowPos hwnd, , , , , , $27/*SWP_NOSIZE|SWP_NOMOVE|SWP_NOZORDER|SWP_DRAWFRAME*/
+	_w = ginfo_sizex - ginfo_winx + dpi_cnv(winsx)
+	_h = ginfo_sizey - ginfo_winy + dpi_cnv(winsy)
+	MoveWindow hwnd, _x, _y, _w, _h, 1
+
+	; オブジェクトの位置・サイズ変更
+	font fname, dpi_cnv(fsize)
+	mref _bm, 67
+	repeat num
+		_oh = objinfo_hwnd(cnt)
+		_x = dpi_cnv(objx(cnt))
+		_y = dpi_cnv(objy(cnt))
+		if (objw(cnt) > 0) {
+			_w = dpi_cnv(objw(cnt))
+			_h = dpi_cnv(objh(cnt))
+		} else {
+			_sz = 0
+			getTextSize _sz, getWinText(_oh)
+			switch objw(cnt)
+			case -2
+				_w = _sz(0) + dpi_cnv(18)
+				_h = dpi_cnv(18)
+				swbreak
+			default
+				_w = _sz(0)
+				_h = _sz(1)
+				swbreak
+			swend
+		}
+		sendmsg _oh, $30/*WM_SETFONT*/, _bm(38), 1
+		MoveWindow _oh, _x, _y, _w, _h, 1
+	loop
+	return
+
+#global
+
+	_dpi_init

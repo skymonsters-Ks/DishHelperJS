@@ -1,0 +1,47 @@
+;	strmap v0.5 main.strmap
+&&&&dsmap:10,777,5778
+Segoe UI
+&&&&dsmap:25,787,29973
+Source script
+&&&&dsmap:46,812,53381
+Input or drop a HSP file
+&&&&dsmap:4,858,972
+...
+&&&&dsmap:19,862,22011
+Output folder
+&&&&dsmap:28,881,32928
+Debug mode
+&&&&dsmap:16,909,17004
+Output .ax only
+&&&&dsmap:35,925,36771
+Rename .html file to index
+&&&&dsmap:28,960,30639
+Automatically resize the canvas
+&&&&dsmap:10,1028,10881
+Help
+&&&&dsmap:7,1038,7525
+Export
+&&&&dsmap:20,1045,20427
+HSP3 script
+&&&&dsmap:43,1065,51842
+Source script not found.
+&&&&dsmap:49,1108,58933
+No output folder is specified.
+&&&&dsmap:34,1157,38340
+%s is an invalid folder.
+&&&&dsmap:66,1191,64746
+OutDataFolder and OutDishFolder must be different.
+&&&&dsmap:46,1257,56356
+Compile error.
+&&&&dsmap:100,1303,110188
+The script must include hsp3dish.as or hgimg4.as
+&&&&dsmap:25,1403,27215
+%s has been created.
+&&&&dsmap:37,1428,42694
+Failed to copy %s
+&&&&dsmap:47,1465,54134
+Failed to create folder %s
+&&&&dsmap:35,1512,37898
+%s does not exist.
+&&&&dsmap:28,1547,33516
+The output is complete.

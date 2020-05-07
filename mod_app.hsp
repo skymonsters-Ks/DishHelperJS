@@ -1,0 +1,237 @@
+#module
+
+#uselib "user32"
+#func SetWindowLong "SetWindowLongA" int, int, int
+
+#deffunc setInput var _mv, var _v, int _px, int _py, int _sx, int _sy
+	pos _px, _py
+	input _v, _sx, _sy
+	dpi_objpool _mv
+	return stat
+
+#deffunc setButton var _mv, label _lb, str _msg, int _px, int _py, int _sx, int _sy, int _style, local _oi
+	pos _px, _py
+	objsize _sx, _sy
+	button gosub _msg, _lb
+	dpi_objpool _mv
+	_oi = stat
+	SetWindowLong objinfo_hwnd(_oi), -16/*GWL_STYLE*/, $50000000 | _style
+	return _oi
+
+#deffunc setStaticText var _mv, str _msg, int _px, int _py, int _style
+	pos _px, _py
+	winobj "static", _msg, , $50000000 | _style
+	dpi_objpool _mv, 1
+	return stat
+
+#deffunc setStaticBox var _mv, int _px, int _py, int _w, int _h, int _style
+	pos _px, _py
+	winobj "static", "", , $50000000 | _style, _w, _h
+	dpi_objpool _mv
+	return stat
+
+#global
+
+#module checkbox hobj
+
+#uselib "user32"
+#func EnableWindow "EnableWindow" int, int
+
+#define global setCheckBox(%1, %2, %3, %4, %5, %6, %7=0) \
+	proc@checkbox = %7 : newmod %2, checkbox, %1, %3, %4, %5, %6, proc@checkbox
+
+#modinit var _mv, var _chk, str _msg, int _px, int _py, var _l, local _oi
+	pos _px, _py
+	if (vartype(_l) == 1) {
+		button gosub _msg, _l
+		dpi_objpool _mv, 2
+		_oi = stat
+		hobj = objinfo_hwnd(_oi)
+		sendmsg hobj, $f4, $3
+		sendmsg hobj, $f1, _chk  ; BM_SETCHECK
+	} else {
+		chkbox _msg, _chk
+		dpi_objpool _mv, 2
+		_oi = stat
+		hobj = objinfo_hwnd(_oi)
+	}
+	return _oi
+
+#modcfunc getCheck
+	sendmsg hobj, $f0 ; BM_GETCHECK
+	return stat
+
+#modfunc enableCheck int _f
+	EnableWindow hobj, _f
+	return
+
+#global
+
+#module
+
+#uselib "user32"
+#func SetWindowLong "SetWindowLongA" int, int, int
+#func SetWindowPos "SetWindowPos" int, int, int, int, int, int, int
+#func GetSysColorBrush "GetSysColorBrush" int
+#func EnableWindow "EnableWindow" int, int
+#func MonitorFromWindow "MonitorFromWindow" int, int
+#func GetMonitorInfo "GetMonitorInfoA" int, var
+#func MessageBeep "MessageBeep" int
+#func PrivateExtractIcons "PrivateExtractIconsA" str, int, int, int, var, var, int, int
+#func DestroyIcon "DestroyIcon" int
+#uselib "gdi32"
+#func SetBkMode "SetBkMode" int, int
+
+#deffunc createDialog int _idc, int _idp
+	winsx = 1
+	winsy = 1
+	id_child = _idc
+	id_parent = _idp
+	hparent = hwnd
+
+	screen id_child, winsx, winsy, screen_hide
+	newmod dpiDialog, mod_dpi, winsx, winsy, 8
+	hchild = hwnd
+	dchild = hdc
+
+	SetWindowLong hchild, -16/*GWL_STYLE*/, $06c80000
+	SetWindowLong hchild, -8/*GWL_HWNDPARENT*/, hparent
+	SetWindowPos hchild, , , , , , $27
+
+	oncmd gosub *evGetMinMaxInfo, $24 ; WM_GETMINMAXINFO
+	oncmd gosub *evCtlColorStatic, $138 ; WM_CTLCOLORSTATIC
+	oncmd gosub *evDpiChanged, $2e0 ; WM_DPICHANGED
+	type = 0 ; 0:info, 1:error
+
+	dpi_font dpiDialog, strmap(STR_OBJFONT), 12
+
+	setStaticBox dpiDialog, 0, 0, winsx, winsy
+	iBack = stat, objinfo_hwnd(stat)
+
+	setStaticBox dpiDialog, 20, 20, 32, 32, $3/*SS_ICON*/
+	iIcon = stat, objinfo_hwnd(stat)
+	hicon = 0
+
+	setStaticText dpiDialog, "", 0, 0, $80/*SS_NOPREFIX*/
+	iMessage = stat, objinfo_hwnd(stat)
+
+	setStaticBox dpiDialog, 0, 0, winsx, winsy
+	iButtonBack = stat, objinfo_hwnd(stat)
+
+	setButton dpiDialog, *ok, "OK", 0, 0, 100, 26, 1
+	iButton = stat, objinfo_hwnd(stat)
+
+	return
+
+#deffunc showDialog str _msg, int _type, local _mi, local _ti
+	if (hchild == 0) {
+		if (_type) {
+			dialog _msg, 1, APPNAME + " - " + strmap(STR_ERROR)
+			end
+		} else {
+			dialog _msg, 0, APPNAME + " - " + strmap(STR_INFO)
+		}
+		return
+	}
+	objsel -1
+	presel = stat
+
+	gsel id_parent
+	dim _mi, 18 /*MONITORINFOEX*/
+	_mi = 72
+	GetMonitorInfo MonitorFromWindow(hwnd, 2/*MONITOR_DEFAULTTONEAREST*/), _mi
+	EnableWindow hwnd, 0
+
+	gsel id_child
+	if (_type) {
+		title strmap(STR_ERROR)
+		MessageBeep $30/*MB_ICONWARNING*/
+		type = 1
+	} else {
+		title strmap(STR_INFO)
+		MessageBeep $40/*MB_ICONINFORMATION*/
+		type = 0
+	}
+	font strmap(STR_OBJFONT), 12
+
+	_ti = 0
+	getTextSize _ti, _msg
+	winsx = limit(64 + _ti(0) + 32     , 200, _mi(7) - _mi(5))
+	winsy = limit(24 + _ti(1) + 32 + 42, 116, _mi(8) - _mi(6))
+	dpi_resize dpiDialog, winsx, winsy
+
+	dpi_objmove dpiDialog, iBack, 0, 0, winsx, winsy - 42
+	dpi_objmove dpiDialog, iButtonBack, 0, winsy - 42, winsx, 42
+	dpi_objmove dpiDialog, iButton, winsx - 108, winsy - 34, 100, 26
+
+	setWinText iMessage(1), _msg
+	dpi_objmove dpiDialog, iMessage, 64, 24, -1
+
+	SetWindowPos hchild, , _mi(1), _mi(2), , , $25/*SWP_NOSIZE|SWP_NOZORDER|SWP_DRAWFRAME*/
+	dpi_change dpiDialog
+
+	gosub *drawIcon
+
+	_ti(0) = (_mi(7) + _mi(5) - ginfo_sizex) / 2
+	_ti(1) = (_mi(8) + _mi(6) - ginfo_sizey) / 2
+	SetWindowPos hchild, , _ti(0), _ti(1), , , $25
+
+	gsel id_child, 1
+	objsel iButton
+
+	return
+
+#deffunc closeDialog
+*ok
+	gosub *iniIcon
+	gsel id_child, -1
+	gsel id_parent, 2
+	gsel id_parent, 1
+	EnableWindow hwnd, 1
+	if (type) {
+		end
+	}
+	objsel presel
+	return
+
+*evGetMinMaxInfo
+	return 0
+
+*evCtlColorStatic
+	h = GetSysColorBrush(5) ; COLOR_WINDOW
+	switch lparam
+	case iMessage(1)
+		SetBkMode wparam, 1 ; TRANSPARENT
+		swbreak
+	case iButtonBack(1)
+		h = GetSysColorBrush(15) ; COLOR_BTNFACE
+		swbreak
+	swend
+	return h
+
+*evDpiChanged
+	dpi_wmchanged dpiDialog
+	gosub *drawIcon
+	return 0
+
+*iniIcon
+	if (hicon) {
+		DestroyIcon hicon
+	}
+	hicon = 0
+	return
+
+*drawIcon
+	gosub *iniIcon
+	sz = int(dpi_rate(dpiDialog) * 32)
+	dim iid
+	PrivateExtractIcons dir_sys + "\\imageres.dll", 76 + type * 3, sz, sz, hicon, iid, 1, 0/*LR_DEFAULTCOLOR*/
+	if (stat == 1) {
+		sendmsg iIcon(1), $170/*STM_SETICON*/, hicon
+	}
+	return
+
+#global
+
+#define global ERR_DIALOG(%1) showDialog %1, 1
+#define global INFO_DIALOG(%1) showDialog %1
