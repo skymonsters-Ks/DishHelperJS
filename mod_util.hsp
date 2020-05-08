@@ -341,6 +341,7 @@
 	
 	loadIni p1
 	p1 : 読み込むファイル名
+	stat にキーの数が返る
 	
 	getIniData p1, p2
 	p1 : キー名
@@ -350,41 +351,52 @@
 */
 #module
 
-#deffunc loadIni str _fn
-	fn = _fn
-	exist fn
-	fs = strsize
-	if (fs == -1) {
+#deffunc loadIni str _fn, local _fd, local _len, local _nl, local _ld, local _ts, local _c
+	sdim key
+	sdim data
+	num = 0
+	exist _fn
+	_len = strsize
+	if (_len < 0) {
 		exists = 0
 	} else {
-		sdim fd, fs
-		bload fn, fd
 		exists = 1
-	}
-	return
-
-#defcfunc getIniData str _key, str _def
-	res = ""
-	if (exists) {
-		p = 0
+		sdim _fd, _len + 1
+		bload _fn, _fd
+		newmod _nl, nexliner, _fd
 		repeat
-			if (p == fs) : break
-			getstr ts, fd, p
-			p += strsize
-			if (peek(ts) == ';') : continue
-			getstr ts, ts, 0, '='
-			pp = strsize
-			if (strtrim(ts) == _key) {
-				getstr ts, ts, pp
-				res = strtrim(ts)
+			getNextLine _nl, _ld
+			if (stat) : break
+			_c = peek(_ld)
+			if (_c == '#' || _c == ';') : continue
+			getstr _ts, _ld, 0, '='
+			_c = strsize
+			_ts = strtrim(_ts)
+			if (_ts != "") {
+				key(num) = _ts
+				getstr _ts, _ld, _c
+				data(num) = strtrim(_ts)
+				num++
+			}
+		loop
+		delmod _nl
+	}
+	return num
+
+#defcfunc getIniData str _key, str _def, local _res
+	_res = ""
+	if (exists) {
+		repeat num
+			if (key(cnt) == _key) {
+				_res = data(cnt)
 				break
 			}
 		loop
 	}
-	if (res == "") {
-		res = _def
+	if (_res == "") {
+		_res = _def
 	}
-	return res
+	return _res
 
 #global
 
