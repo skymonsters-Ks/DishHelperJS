@@ -1,7 +1,7 @@
 ;$f>utf8in
 
 #define global APPNAME "DishHelperJS"
-#define global APPVER  "v.0.1.0.0"
+#define global APPVER  "v.0.1.1.1"
 #define global SITEURL "https://github.com/skymonsters-Ks/DishHelperJS"
 
 #packopt name "hsp3dh_js"

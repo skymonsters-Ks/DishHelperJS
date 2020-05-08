@@ -404,8 +404,7 @@
 
 #uselib "shlwapi"
 #func PathIsDirectory "PathIsDirectoryW" wstr
-; #func PathSearchAndQualify "PathSearchAndQualifyW" wstr, wptr, int  ; 無言か応答なしで落ちる…
-#func PathSearchAndQualify "PathSearchAndQualifyA" str, sptr, int
+#func PathSearchAndQualify "PathSearchAndQualifyW" wptr, wptr, wptr
 #uselib "kernel32"
 #func CopyFile "CopyFileW" wstr, wstr, int
 #uselib "shell32"
@@ -435,12 +434,11 @@
 	p1 : パス
 	p1 をフルパスに変換して返す
 */
-#defcfunc toFullPath str _path
-	sdim p, 512
-	sdim pp, 1024
-	PathSearchAndQualify _path, varptr(p), 512
-	pp = cnvatos(p)
-	return strtrim(pp, 2, '\\')
+#defcfunc toFullPath str _path, local _p
+	sdim _p, 1024
+	PathSearchAndQualify _path, varptr(_p), 500 ; バッファの半分以上にするとダメな感じ…
+	_p = cnvwtos(_p)
+	return strtrim(_p, 2, '\\')
 
 /*
 	bcopyEx p1, p2, p3
