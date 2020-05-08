@@ -79,8 +79,15 @@
 #func MessageBeep "MessageBeep" int
 #func PrivateExtractIcons "PrivateExtractIconsA" str, int, int, int, var, var, int, int
 #func DestroyIcon "DestroyIcon" int
+#func GetDC "GetDC" int
+#func ReleaseDC "ReleaseDC" int, int
 #uselib "gdi32"
 #func SetBkMode "SetBkMode" int, int
+#func GetStockObject "GetStockObject" int
+#func CreatePen "CreatePen" int, int, int
+#func SelectObject "SelectObject" int, int
+#func DeleteObject "DeleteObject" int
+#func Rectangle "Rectangle" int, int, int, int, int
 
 #deffunc createDialog int _idc, int _idp
 	winsx = 1
@@ -90,7 +97,7 @@
 	hparent = hwnd
 
 	screen id_child, winsx, winsy, screen_hide
-	newmod dpiDialog, mod_dpi, winsx, winsy, 8
+	newmod dpiDialog, mod_dpi, winsx, winsy, 4
 	hchild = hwnd
 	dchild = hdc
 
@@ -98,6 +105,7 @@
 	SetWindowLong hchild, -8/*GWL_HWNDPARENT*/, hparent
 	SetWindowPos hchild, , , , , , $27
 
+	oncmd gosub *evPaint, $f ; WM_PAINT
 	oncmd gosub *evGetMinMaxInfo, $24 ; WM_GETMINMAXINFO
 	oncmd gosub *evCtlColorStatic, $138 ; WM_CTLCOLORSTATIC
 	oncmd gosub *evDpiChanged, $2e0 ; WM_DPICHANGED
@@ -105,18 +113,12 @@
 
 	dpi_font dpiDialog, strmap(STR_OBJFONT), 12
 
-	setStaticBox dpiDialog, 0, 0, winsx, winsy
-	iBack = stat, objinfo_hwnd(stat)
-
 	setStaticBox dpiDialog, 20, 20, 32, 32, $3/*SS_ICON*/
 	iIcon = stat, objinfo_hwnd(stat)
 	hicon = 0
 
 	setStaticText dpiDialog, "", 0, 0, $80/*SS_NOPREFIX*/
 	iMessage = stat, objinfo_hwnd(stat)
-
-	setStaticBox dpiDialog, 0, 0, winsx, winsy
-	iButtonBack = stat, objinfo_hwnd(stat)
 
 	setButton dpiDialog, *ok, "OK", 0, 0, 100, 26, 1
 	iButton = stat, objinfo_hwnd(stat)
@@ -160,8 +162,6 @@
 	winsy = limit(24 + _ti(1) + 32 + 42, 116, _mi(8) - _mi(6))
 	dpi_resize dpiDialog, winsx, winsy
 
-	dpi_objmove dpiDialog, iBack, 0, 0, winsx, winsy - 42
-	dpi_objmove dpiDialog, iButtonBack, 0, winsy - 42, winsx, 42
 	dpi_objmove dpiDialog, iButton, winsx - 108, winsy - 34, 100, 26
 
 	setWinText iMessage(1), _msg
@@ -203,9 +203,6 @@
 	case iMessage(1)
 		SetBkMode wparam, 1 ; TRANSPARENT
 		swbreak
-	case iButtonBack(1)
-		h = GetSysColorBrush(15) ; COLOR_BTNFACE
-		swbreak
 	swend
 	return h
 
@@ -213,6 +210,27 @@
 	dpi_wmchanged dpiDialog
 	gosub *drawIcon
 	return 0
+
+#deffunc clearDlgWinBg local _id, local _dc, local _oo, local _hp, local _y
+	_id = ginfo_sel
+	gsel id_child
+	_dc = GetDC(hwnd)
+	_oo = SelectObject(_dc, GetSysColorBrush(5/*COLOR_WINDOW*/))
+	_hp = CreatePen(5/*PS_NULL*/, 0, 0)
+	_y = dpi_rate(dpiDialog) * 42
+	SelectObject _dc, _hp
+	Rectangle _dc, -1, -1, ginfo_winx + 1, ginfo_winy - _y + 1
+	SelectObject _dc, GetSysColorBrush(15/*COLOR_BTNFACE*/)
+	Rectangle _dc, -1, ginfo_winy - _y, ginfo_winx + 1, ginfo_winy + 1
+	ReleaseDC hwnd, _dc
+	DeleteObject _hp
+	SelectObject _dc, _oo
+	gsel _id
+	return
+
+*evPaint
+	clearDlgWinBg
+	return
 
 *iniIcon
 	if (hicon) {

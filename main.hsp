@@ -27,8 +27,13 @@
 #func GetSysColorBrush "GetSysColorBrush" int
 #func MessageBeep "MessageBeep" int
 #func MessageBoxIndirect "MessageBoxIndirectA" var
+#func GetDC "GetDC" int
+#func ReleaseDC "ReleaseDC" int, int
 #uselib "gdi32"
 #func SetBkMode "SetBkMode" int, int
+#func GetStockObject "GetStockObject" int
+#func SelectObject "SelectObject" int, int
+#func Rectangle "Rectangle" int, int, int, int, int
 #uselib "shell32"
 #func dragAcceptFiles "DragAcceptFiles" int, int
 #func dragQueryFile "DragQueryFileW" int, int, wptr, int
@@ -127,6 +132,7 @@
 		title APPNAME + " " + APPVER
 		onexit gosub *byebye
 		onkey gosub *evKey
+		oncmd gosub *evPaint, $f ; WM_PAINT
 		oncmd gosub *evGetMinMaxInfo, $24 ; WM_GETMINMAXINFO
 		oncmd gosub *evCtlColorStatic, $138 ; WM_CTLCOLORSTATIC
 		oncmd gosub *evDpiChanged, $2e0 ; WM_DPICHANGED
@@ -137,8 +143,6 @@
 
 		dpi_font dpiMain, strmap(STR_OBJFONT), 12
 
-		setStaticBox dpiMain, 0, 0, WIN_SX, WIN_SX
-		
 		setStaticText dpiMain, strmap(STR_SCRIPTPATH), 8, 7
 		hTextSrcPath = objinfo_hwnd(stat)
 		if (srcFile == "") {
@@ -212,6 +216,21 @@
 *evDpiChanged
 	dpi_wmchanged dpiMain
 	return 0
+
+#deffunc clearMainWinBg local _id, local _dc, local _oo
+	_id = ginfo_sel
+	gsel 0
+	_dc = GetDC(hwnd)
+	_oo = SelectObject(_dc, GetSysColorBrush(15/*COLOR_BTNFACE*/))
+	Rectangle _dc, -1, -1, ginfo_winx + 1, ginfo_winy + 1
+	ReleaseDC hwnd, _dc
+	SelectObject _dc, _oo
+	gsel _id
+	return
+
+*evPaint
+	clearMainWinBg
+	return
 
 *cbpDebugMode
 	fDebugMode = getCheck(cbDebugMode)
