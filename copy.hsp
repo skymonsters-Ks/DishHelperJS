@@ -1,0 +1,14 @@
+;$s>copy.hsp
+
+; HSPインストールフォルダにコピーします
+
+#runtime "hsp3cl"
+
+#define JSDIR "hsp3js\\"
+
+	fn = "hsp3dh_js.exe", JSDIR + "load.js", JSDIR + "style.css", JSDIR + "temp.html"
+	foreach fn
+		bcopy fn(cnt), dir_exe + "\\" + fn(cnt)
+		mes fn(cnt) + " コピー完了！"
+	loop
+	mes "全コピー完了！"
