@@ -1,7 +1,5 @@
-;$f>utf8in
-
 #define global APPNAME "DishHelperJS"
-#define global APPVER  "v.0.1.1.1"
+#define global APPVER  "v.0.1.2.0"
 #define global SITEURL "https://github.com/skymonsters-Ks/DishHelperJS"
 
 #packopt name "hsp3dh_js"
@@ -339,11 +337,8 @@
 	; データフォルダ（ソースフォルダからの相対）
 	; ソースフォルダもしくはその直下のフォルダでなければならない
 	; ソースフォルダ以外のフォルダはサブフォルダも検索対象になる
-	dirs = getIniData("DataFolder", ".\\|data|res")
-	getSplitList dirs, dirs, '|'
+	getIniDataFiles dataDirs, "DataFolder", ".\\|data|res"
 	numdir = stat
-	sdim dataDirs, 64, numdir
-	split dirs, "\n", dataDirs
 	n = 0
 	repeat numdir
 		dir = toFullPath(dataDirs(cnt)) + "\\"
@@ -400,12 +395,8 @@
 	}
 
 	; データファイルのリストアップ対象の拡張子（拡張子なしはアンダーバー）
-	exts = getIniData("DataExtensions", "bmp|png|jpg|jpeg|wav|mp3|ogg|gpb|material|frag|vert")
-	exts = getpath(exts, 16)
-	getSplitList exts, exts, '|'
+	getIniDataFiles dataExts, "DataExtensions", "bmp|png|jpg|jpeg|wav|mp3|ogg|gpb|material|frag|vert"
 	numext = stat
-	sdim dataExts, 16, numext
-	split exts, "\n", dataExts
 	repeat numext
 		if (dataExts(cnt) == "_") {
 			dataExts(cnt) = ""
@@ -416,12 +407,8 @@
 
 	; データフォルダから無視するファイル
 	; 各階層のファイルが対象になる (img.png -> img.png, data\img.png, res\img.png, ...)
-	ignf = getIniData("IgnoredFiles", "obj|hsptmp|packfile")
-	ignf = getpath(ignf, 16)
-	getSplitList ignf, ignf, '|'
+	getIniDataFiles ignFiles, "IgnoredFiles", "obj|hsptmp|packfile"
 	numign = stat
-	sdim ignFiles, 64, numign
-	split ignf, "\n", ignFiles
 	n = 0
 	repeat numign : i = cnt
 		ext = getpath(ignFiles(i), 2)
