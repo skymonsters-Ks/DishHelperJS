@@ -1,10 +1,14 @@
 ;	strmap v0.5 main.strmap
+&&&&dsmap:12,776,8172
+Information
+&&&&dsmap:6,788,3669
+Error
 &&&&dsmap:10,777,5778
 Segoe UI
 &&&&dsmap:25,787,29973
 Source script
-&&&&dsmap:46,812,53381
-Input or drop a HSP file
+&&&&dsmap:61,829,72411
+Input or drop a HSP script file
 &&&&dsmap:4,858,972
 ...
 &&&&dsmap:19,862,22011

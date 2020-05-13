@@ -18,7 +18,7 @@
 	strs(STR_SCRIPTPATH) = "ソーススクリプト"
 
 #enum global STR_DEFSRCINPUT
-	strs(STR_DEFSRCINPUT) = "HSPファイルを入力またはドロップ"
+	strs(STR_DEFSRCINPUT) = "HSPスクリプトファイルを入力またはドロップ"
 
 #enum global STR_REFBTN
 	strs(STR_REFBTN) = "..."
