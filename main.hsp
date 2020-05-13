@@ -1,5 +1,5 @@
 #define global APPNAME "DishHelperJS"
-#define global APPVER  "v.0.1.3.0"
+#define global APPVER  "v.0.1.4.0"
 #define global SITEURL "https://github.com/skymonsters-Ks/DishHelperJS"
 
 #packopt name "hsp3dh_js"
@@ -253,10 +253,8 @@
 	return
 
 *setSrcFile
-	if (getpath(f, 18) == ".hsp") {
-		srcFile = f
-		setWinText hSrcFile, f
-	}
+	srcFile = f
+	setWinText hSrcFile, f
 	return
 
 /* 
