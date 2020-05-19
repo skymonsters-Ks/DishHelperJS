@@ -83,26 +83,24 @@
 #func ReleaseDC "ReleaseDC" int, int
 #uselib "gdi32"
 #func SetBkMode "SetBkMode" int, int
-#func GetStockObject "GetStockObject" int
 #func CreatePen "CreatePen" int, int, int
 #func SelectObject "SelectObject" int, int
 #func DeleteObject "DeleteObject" int
 #func Rectangle "Rectangle" int, int, int, int, int
 
-#deffunc createDialog int _idc, int _idp
+#deffunc createDialog int _idc, int _idp, local _h
 	winsx = 1
 	winsy = 1
 	id_child = _idc
 	id_parent = _idp
-	hparent = hwnd
+	_h = hwnd
 
 	screen id_child, winsx, winsy, screen_hide
 	newmod dpiDialog, mod_dpi, winsx, winsy, 4
 	hchild = hwnd
-	dchild = hdc
 
 	SetWindowLong hchild, -16/*GWL_STYLE*/, $06c80000
-	SetWindowLong hchild, -8/*GWL_HWNDPARENT*/, hparent
+	SetWindowLong hchild, -8/*GWL_HWNDPARENT*/, _h
 	SetWindowPos hchild, , , , , , $27
 
 	oncmd gosub *evPaint, $f ; WM_PAINT
@@ -170,7 +168,7 @@
 	SetWindowPos hchild, , _mi(1), _mi(2), , , $25/*SWP_NOSIZE|SWP_NOZORDER|SWP_DRAWFRAME*/
 	dpi_change dpiDialog
 
-	gosub *drawIcon
+	drawIcon
 
 	_ti(0) = (_mi(7) + _mi(5) - ginfo_sizex) / 2
 	_ti(1) = (_mi(8) + _mi(6) - ginfo_sizey) / 2
@@ -198,17 +196,14 @@
 	return 0
 
 *evCtlColorStatic
-	h = GetSysColorBrush(5) ; COLOR_WINDOW
-	switch lparam
-	case iMessage(1)
+	if (lparam == iMessage(1)) {
 		SetBkMode wparam, 1 ; TRANSPARENT
-		swbreak
-	swend
-	return h
+	}
+	return GetSysColorBrush(5) ; COLOR_WINDOW
 
 *evDpiChanged
 	dpi_wmchanged dpiDialog
-	gosub *drawIcon
+	drawIcon
 	return 0
 
 #deffunc clearDlgWinBg local _id, local _dc, local _oo, local _hp, local _y
@@ -239,11 +234,11 @@
 	hicon = 0
 	return
 
-*drawIcon
+#deffunc drawIcon local _sz, local _iid
 	gosub *iniIcon
-	sz = int(dpi_rate(dpiDialog) * 32)
-	dim iid
-	PrivateExtractIcons dir_sys + "\\imageres.dll", 76 + type * 3, sz, sz, hicon, iid, 1, 0/*LR_DEFAULTCOLOR*/
+	_sz = int(dpi_rate(dpiDialog) * 32)
+	dim _iid
+	PrivateExtractIcons dir_sys + "\\imageres.dll", 76 + type * 3, _sz, _sz, hicon, _iid, 1, 0/*LR_DEFAULTCOLOR*/
 	if (stat == 1) {
 		sendmsg iIcon(1), $170/*STM_SETICON*/, hicon
 	}

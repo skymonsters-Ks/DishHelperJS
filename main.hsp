@@ -1,5 +1,5 @@
 #define global APPNAME "DishHelperJS"
-#define global APPVER  "v.0.1.6.0"
+#define global APPVER  "v.0.1.7.0"
 #define global SITEURL "https://github.com/skymonsters-Ks/DishHelperJS"
 
 #packopt name "hsp3dh_js"
@@ -45,79 +45,40 @@
 #const SUBDIRLV_MAX 4
 
 
-	splitString dir_cmdline
-	pnum = stat
+	exeDir = dir_exe + "\\"
+
+	loadCmdline
+
+	if (getCmdlinePrm("ver")) {
+		dispVerDlg
+	}
+
+	setLang getCmdlineVal("lang")
+	initStrmap
 
 	sdim srcFile, 512
-	fDebugMode = 0   ; デバッグモードで出力
-	fNameIndex = 0   ; .html のファイル名を index にする
-	fAutoResize = 0  ; <canvas>のサイズをクライアントエリアにフィットさせる
-	fAxOnly = 0      ; .ax だけを出力
-	fNoWin = 0       ; メインウィンドウを使わないでコンパイル・出力する
-	sdim outDir, 512
-	outDir = "public"   ; 出力フォルダ
-	exeDir = dir_exe + "\\"
-	
-	; 言語
-	strlang = ""
+	srcFile = getCmdlinePath()
 
-	repeat pnum
-		prm = getSplitString(cnt)
-		if (peek(prm) != '/') {
-			srcFile = prm
-			exist srcFile
-			if (strsize < 0) {
-				ERR_DIALOG strf("%s could not be found.", srcFile)
-			}
-		} else {
-			getBothSides opt, val, strtrim(prm, 1, '/')
-			switch getpath(opt, 16)
-			case "debug"
-				fDebugMode = 1
-				swbreak
-			case "index"
-				fNameIndex = 1
-				swbreak
-			case "resize"
-				fAutoResize = 1
-				swbreak
-			case "axonly"
-				fAxOnly = 1
-				swbreak
-			case "nowin"
-				fNoWin = 1
-				swbreak
-			case "outdir"
-				if (val != "") {
-					outDir = val
-				}
-				swbreak
-			case "lang"
-				strlang = val
-				swbreak
-			case "ver"
-				ts = strf("%s %s\n\n", APPNAME, APPVER)
-				ts += strf("Build: date %s %s HSP ver.%x", __date__, __time__, hspver)
-				s = "About"
-				mbp = 40, hwnd, hinstance, varptr(ts), varptr(s), $80/*MB_USERICON*/, 128
-				MessageBeep $40/*MB_ICONINFORMATION*/
-				MessageBoxIndirect mbp
-				end
-				swbreak
-			default
-				ERR_DIALOG strf("%s is an invalid option.", opt)
-			swend
-		}
-	loop
-	
-	if (strlang != "") {
-		f = "lang_" + strlang + ".txt"
-		exist f
-		if (strsize > 0) {
-			strexchange f
-		}
+	sdim outDir, 512
+	outDir = getCmdlineVal("outdir")
+	if (outDir == "") {
+		outDir = "public"
 	}
-	initStrmap
+
+	; デバッグモードで出力
+	fDebugMode = getCmdlinePrm("debug")
+
+	; .html のファイル名を index にする
+	fNameIndex = getCmdlinePrm("index")
+
+	; <canvas>のサイズをクライアントエリアにフィットさせる
+	fAutoResize = getCmdlinePrm("resize")
+
+	; .ax だけを出力
+	fAxOnly = getCmdlinePrm("axonly")
+
+	; メインウィンドウを使わないでコンパイル・出力する
+	fNoWin = getCmdlinePrm("nowin")
 
 	if (fNoWin) {
 		gosub *export
@@ -198,18 +159,22 @@
 *evGetMinMaxInfo
 	return 0 ; HSPのリサイズ制限避け
 
-*evCtlColorStatic
-	h = GetSysColorBrush(15) ; COLOR_BTNFACE
-	switch lparam
+#deffunc setCtlColorStatic int _lp, int _wp, local _h
+	_h = GetSysColorBrush(15) ; COLOR_BTNFACE
+	switch _lp
 	case hTextSrcPath
 	case hTextOutDir
-		SetBkMode wparam, 1 ; TRANSPARENT
+		SetBkMode _wp, 1 ; TRANSPARENT
 		swbreak
 	case hSeparator
-		h = GetSysColorBrush(16) ; COLOR_BTNSHADOW
+		_h = GetSysColorBrush(16) ; COLOR_BTNSHADOW
 		swbreak
 	swend
-	return h
+	return _h
+
+*evCtlColorStatic
+	setCtlColorStatic lparam, wparam
+	return stat
 
 *evDpiChanged
 	dpi_wmchanged dpiMain
@@ -238,26 +203,27 @@
 	enableCheck cbNameIndex, fAxOnly ^ 1
 	return
 
+#deffunc loadDropFile int _h, local _f
+	sdim _f, 512
+	DragQueryFile _h, 0, varptr(_f), 512
+	setSrcFile cnvwtos(_f)
+	DragFinish _h
+	return
+
 *evDropFiles
-	h = wParam
-	sdim fn, 512
-	DragQueryFile h, 0, varptr(fn), 512
-	f = cnvwtos(fn)
-	DragFinish h
-	gosub *setSrcFile
+	loadDropFile wparam
 	return
 
 *selectScrFile
 	dialog "hsp", 16, strmap(STR_HSPSCRIPT)
 	if (stat) {
-		f = refstr
-		gosub *setSrcFile
+		setSrcFile refstr
 	}
 	return
 
-*setSrcFile
-	srcFile = f
-	setWinText hSrcFile, f
+#deffunc setSrcFile str _f
+	srcFile = _f
+	setWinText hSrcFile, _f
 	return
 
 /* 
@@ -319,11 +285,7 @@
 	hsc_objname axname
 	hsc_comp 4 * (fUTF8 == 0), 32 * (fUTF8 != 0)
 	if (stat) {
-		n = 0
-		hsc3_messize n
-		sdim buf, n
-		hsc_getmes buf
-		INFO_DIALOG strf("%s\n\n%s", strmap(STR_ERRCOMPILE), cnvatos(buf))
+		dispCompErr
 		return
 	}
 
@@ -335,33 +297,13 @@
 		return
 	}
 
-	; データフォルダ（ソースフォルダからの相対）
-	; ソースフォルダもしくはその直下のフォルダでなければならない
-	; ソースフォルダ以外のフォルダはサブフォルダも検索対象になる
-	getIniDataFiles dataDirs, "DataFolder", ".\\|data|res"
-	numdir = stat
-	n = 0
-	repeat numdir
-		dir = toFullPath(dataDirs(cnt)) + "\\"
-		if (dirExists(dir) && instr(dir, 0, srcDir) == 0) {
-			; データフォルダが存在かつソースフォルダ内にある
-			if (dir != srcDir) {
-				if (instr(outDir, 0, dir) == 0) {
-					; データフォルダと出力フォルダが同じか 
-					; データフォルダ内に出力フォルダがある
-					n = -1
-					break
-				}
-			}
-			getstr dataDirs(n), dir, strlen(srcDir)
-			n++
-		}
-	loop
-	if (n < 0) {
+	sdim dataDirs
+	getDataDir dataDirs
+	if (stat < 0) {
 		INFO_DIALOG strf(strmap(STR_INVALIDFOLDER), outDir)
 		return
 	}
-	numdir = n
+	numdir = stat
 
 	; ランタイム(js,css)を出力するフォルダと、
 	; プロジェクトファイル(ax,データファイル)を出力するフォルダ
@@ -396,169 +338,296 @@
 		ERR_DIALOG strf(strmap(STR_FAILMAKEDIR), projOutDir)
 	}
 
-	; データファイルのリストアップ対象の拡張子（拡張子なしはアンダーバー）
-	getIniDataFiles dataExts, "DataExtensions", "bmp|png|jpg|jpeg|wav|mp3|ogg|gpb|material|frag|vert|ttf"
+	sdim dataExts
+	getDataExt dataExts
 	numext = stat
-	repeat numext
-		if (dataExts(cnt) == "_") {
-			dataExts(cnt) = ""
-		} else {
-			dataExts(cnt) = "." + dataExts(cnt)
-		}
-	loop
 
-	; データフォルダから無視するファイル
-	; 各階層のファイルが対象になる (img.png -> img.png, data\img.png, res\img.png, ...)
-	getIniDataFiles ignFiles, "IgnoredFiles", "obj|hsptmp|packfile"
+	sdim ignFiles
+	getIgnoreFile ignFiles
 	numign = stat
-	n = 0
-	repeat numign : i = cnt
-		ext = getpath(ignFiles(i), 2)
-		repeat numext
-			if (ext == dataExts(cnt)) {
-				ignFiles(n) = ignFiles(i)
-				n++
-			}
-		loop
-	loop
-	numign = n
 
 	sdim prefiles, 3200
-
-	; データファイルのリストアップとコピー
 	if (numdir > 0 && numext > 0) {
-		newmod pfiles, vlstring, 4096
-		repeat numdir
-			dir = dataDirs(cnt)
-			if (dir == "") {
-				listFolders list
-			} else {
-				chdir dir
-				listFolders list, SUBDIRLV_MAX
-			}
-			fnum = stat
-			newmod dlist, nexliner, list
-			repeat fnum
-				getNextLine dlist, dpath
-				ext = getpath(dpath, 18)
-				repeat numext
-					if (ext != dataExts(cnt)) : continue
-					if (numign) {
-						n = 0
-						f = getpath(dpath, 24)
-						repeat numign
-							if (f == ignFiles(cnt)) {
-								n++
-								break
-							}
-						loop
-						if (n) : break
-					}
-					dpath = dir + dpath
-					odpath = projOutDir + dpath
-					oddir = getpath(odpath, 32)
-					makeDir oddir
-					if (stat == 0) {
-						ERR_DIALOG strf(strmap(STR_FAILMAKEDIR), oddir)
-					}
-					bcopyEx srcDir + dpath, odpath
-					if (stat == 0) {
-						ERR_DIALOG strf(strmap(STR_FAILCOPYAX), dpath)
-					}
-					strrep dpath, "\\", "/"
-					catString pfiles, strf("'%s',", dpath)
-				loop
-			loop
-			delmod dlist
-			chdir srcDir
-		loop
-		prefiles += getString(pfiles)
-		delmod pfiles
+		copyDataFileAll
 	}
 
-	if (prefiles != "") {
-		poke prefiles, strlen(prefiles) - strlen(",") ; 最後のコンマを削除
-	}
-	
-	makeDir dishOutDir
-	if (stat == 0) {
-		ERR_DIALOG strf(strmap(STR_FAILMAKEDIR), dishOutDir)
-	}
-	if (runtime == "hsp3gp") {
-		ts = "-gp"
-	} else {
-		ts = ""
-	}
-	sdim dishfs
-	dishfs(0) = "hsp3dish" + ts + ".js"
-	dishfs(1) = "hsp3dish" + ts + ".wasm"
-	dishfs(2) = "load.js"
-	dishfs(3) = "style.css"
-	foreach dishfs
-		bcopyEx exeDir + DIR_HSPJS + "\\" + dishfs(cnt), dishOutDir + dishfs(cnt)
-		if (stat == 0) {
-			ERR_DIALOG strf(strmap(STR_FAILCOPYAX), dishfs(cnt))
-		}
-	loop
+	sdim dishFiles, 64, 4 ; hsp3dish*.js, hsp3dish*.wasm, load.js, style.css
+	copyRuntime
+	makeHtml
 
-	fn = exeDir + DIR_HSPJS + "\\temp.html"
-	exist fn
-	if (strsize < 0) {
-		INFO_DIALOG strf(strmap(STR_FILENOTEXIST), HTML_TMP)
-		return
-	}
-	sdim buf, strsize * 3
-	bload fn, buf
-
-	env = ""
-	x = getIniData("wx", "640")
-	y = getIniData("wy", "480")
-	env += strf("\"HSP_WX\":\"%s\",\"HSP_WY\":\"%s\",", x, y)
-	x = getIniData("sx", x)
-	y = getIniData("sy", y)
-	env += strf("\"HSP_SX\":\"%s\",\"HSP_SY\":\"%s\",", x, y)
-	env += strf("\"HSP_LIMIT_STEP\":\"%s\"", getIniData("step", "5000"))
-	strrep buf, "___DISH_ENV___", env
-	strrep buf, "___TITLE___", getIniData("Title", fname)
-	strrep buf, "___CANVAS_WIDTH___", x
-	strrep buf, "___CANVAS_HEIGHT___", y
-	strrep buf, "___DIR_PREDATA___", projOutFolder
-	strrep buf, "___AX_FILE___", fname + ".ax"
-	strrep buf, "___PRELOAD_FILES___", prefiles
-	strrep buf, "___CSS___", dishOutFolder + "/" + dishfs(3)
-	strrep buf, "___JS_LOAD___", dishOutFolder + "/" + dishfs(2)
-	strrep buf, "___JS_DISH___", dishOutFolder + "/" + dishfs(0)
-	head = ""
-	foot = ""
-	f = fAutoResize
-	if (fDebugMode) {
-		foot = "<textarea id=\"output\" rows=\"8\"></textarea><br>"
-		f = 0
-	}
-	if (f) {
-		resize = "true"
-		style = "*{margin:0;}#header,#footer{display:none;}"
-	} else {
-		resize = "false"
-		style = strf(".emscripten_border{weight:%spx;height:%spx;}", x, y)
-		head += getIniData("HtmlHeader", "")
-		foot += getIniData("HtmlFooter", "")
-	}
-	strrep buf, "___RESIZABLE___", resize
-	strrep buf, "___STYLE___", getIniData("Style", "") + style
-	strrep buf, "___HTML_HEAD___", head
-	strrep buf, "___HTML_FOOT___", foot
-
-	if (fNameIndex) {
-		fn = "index"
-	} else {
-		fn = fname
-	}
-	bsave outDir + fn + ".html", buf, strlen(buf)
-	
 	INFO_DIALOG strmap(STR_SUCCESSEXPORT)
 	return
 
 *dispHelp
 	exec SITEURL, 16
+	return
+
+#deffunc loadCmdline local _num
+	splitString dir_cmdline
+	_num = stat
+	sdim clparams
+	repeat _num
+		clparams(cnt) = getSplitString(cnt)
+	loop
+	return
+
+#defcfunc getCmdlinePrm str _p, local _res
+	_res = 0
+	foreach clparams
+		if (peek(clparams(cnt)) != '/') : continue
+		if (strtrim(clparams(cnt), 1, '/') == _p) {
+			_res = 1
+			break
+		}
+	loop
+	return _res
+
+#defcfunc getCmdlineVal str _p, local _res, local _prm, local _val
+	_res = ""
+	foreach clparams
+		if (peek(clparams(cnt)) != '/') : continue
+		getBothSides _prm, _val, strtrim(clparams(cnt), 1, '/')
+		if (_prm == _p) {
+			_res = _val
+			break
+		}
+	loop
+	return _res
+
+#defcfunc getCmdlinePath local _res
+	_res = ""
+	foreach clparams
+		if (peek(clparams(cnt)) != '/') {
+			_res = clparams(cnt)
+			break
+		}
+	loop
+	return _res
+
+#deffunc setLang str _lang, local _f
+	if (_lang != "") {
+		_f = "lang_" + _lang + ".txt"
+		exist _f
+		if (strsize > 0) {
+			strexchange _f
+		}
+	}
+	return
+
+#deffunc dispVerDlg local _ts, local _s, local _mbp
+	_ts = strf("%s %s\n\n", APPNAME, APPVER)
+	_ts += strf("Build: date %s %s HSP ver.%x", __date__, __time__, hspver)
+	_s = "About"
+	_mbp = 40, hwnd, hinstance, varptr(_ts), varptr(_s), $80/*MB_USERICON*/, 128
+	MessageBeep $40/*MB_ICONINFORMATION*/
+	MessageBoxIndirect _mbp
+	return
+
+#deffunc dispCompErr local _n, local _buf
+	_n = 0
+	hsc3_messize _n
+	sdim _buf, _n
+	hsc_getmes _buf
+	INFO_DIALOG strf("%s\n\n%s", strmap(STR_ERRCOMPILE), cnvatos(_buf))
+	return
+
+#deffunc getDataDir array _dirs, local _num, local _dir
+	; データフォルダ（ソースフォルダからの相対）
+	; ソースフォルダもしくはその直下のフォルダでなければならない
+	; ソースフォルダ以外のフォルダはサブフォルダも検索対象になる
+	_num = 0
+	getIniDataFiles _dirs, "DataFolder", ".\\|data|res"
+	repeat stat
+		_dir = toFullPath(_dirs(cnt)) + "\\"
+		if (dirExists(_dir) && instr(_dir, 0, srcDir) == 0) {
+			; データフォルダが存在かつソースフォルダ内にある
+			if (_dir != srcDir) {
+				if (instr(outDir, 0, _dir) == 0) {
+					; データフォルダと出力フォルダが同じか 
+					; データフォルダ内に出力フォルダがある
+					_num = -1
+					break
+				}
+			}
+			getstr _dirs(_num), _dir, strlen(srcDir)
+			_num++
+		}
+	loop
+	return _num
+
+#deffunc getDataExt array _exts, local _num
+	; データファイルのリストアップ対象の拡張子（拡張子なしはアンダーバー）
+	getIniDataFiles _exts, "DataExtensions", "bmp|png|jpg|jpeg|wav|mp3|ogg|gpb|material|frag|vert|ttf"
+	_num = stat
+	repeat _num
+		if (_exts(cnt) == "_") {
+			_exts(cnt) = ""
+		} else {
+			_exts(cnt) = "." + _exts(cnt)
+		}
+	loop
+	return _num
+
+#deffunc getIgnoreFile array _fs, local _num, local _i, local _ext
+	; データフォルダから無視するファイル
+	; 各階層のファイルが対象になる (img.png -> img.png, data\img.png, res\img.png, ...)
+	_num = 0
+	getIniDataFiles _fs, "IgnoredFiles", "obj|hsptmp|packfile"
+	repeat stat : _i = cnt
+		_ext = getpath(_fs(_i), 2)
+		repeat numext
+			if (_ext == dataExts(cnt)) {
+				_fs(_num) = _fs(_i)
+				_num++
+			}
+		loop
+	loop
+	return _num
+
+#deffunc copyDataFileAll local _pf, local _dir, local _list, local _num, local _ls, local _df, local _ext
+	newmod _pf, vlstring, 4096
+	repeat numdir
+		_dir = dataDirs(cnt)
+		if (_dir == "") {
+			listFolders _list
+		} else {
+			chdir _dir
+			listFolders _list, SUBDIRLV_MAX
+		}
+		_num = stat
+		newmod _ls, nexliner, _list
+		repeat _num
+			getNextLine _ls, _df
+			_ext = getpath(_df, 18)
+			repeat numext
+				if (_ext != dataExts(cnt)) : continue
+				if (checkIgnoreFiles(_df)) : break
+				copyDataFile _dir + _df, _pf
+			loop
+		loop
+		delmod _ls
+		chdir srcDir
+	loop
+	prefiles += getString(_pf)
+	delmod _pf
+	if (prefiles != "") {
+		poke prefiles, strlen(prefiles) - strlen(",") ; 最後のコンマを削除
+	}
+	return
+
+#defcfunc checkIgnoreFiles str _p, local _n, local _f
+	if (numign) {
+		_n = 0
+		_f = getpath(_p, 24)
+		repeat numign
+			if (_f == ignFiles(cnt)) {
+				_n++
+				break
+			}
+		loop
+		return _n
+	}
+	return 0
+
+#deffunc copyDataFile str _f, var _pf, local _odf, local _odd, local _vf
+	_odf = projOutDir + _f
+	_odd = getpath(_odf, 32)
+	makeDir _odd
+	if (stat == 0) {
+		ERR_DIALOG strf(strmap(STR_FAILMAKEDIR), _odd)
+	}
+	bcopyEx srcDir + _f, _odf
+	if (stat == 0) {
+		ERR_DIALOG strf(strmap(STR_FAILCOPYAX), _f)
+	}
+	_vf = _f
+	strrep _vf, "\\", "/"
+	catString _pf, strf("'%s',", _vf)
+	return
+
+#deffunc copyRuntime local _sf
+	makeDir dishOutDir
+	if (stat == 0) {
+		ERR_DIALOG strf(strmap(STR_FAILMAKEDIR), dishOutDir)
+	}
+	if (runtime == "hsp3gp") {
+		_sf = "-gp"
+	} else {
+		_sf = ""
+	}
+	dishFiles(0) = "hsp3dish" + _sf + ".js"
+	dishFiles(1) = "hsp3dish" + _sf + ".wasm"
+	dishFiles(2) = "load.js"
+	dishFiles(3) = "style.css"
+	foreach dishFiles
+		bcopyEx exeDir + DIR_HSPJS + "\\" + dishFiles(cnt), dishOutDir + dishFiles(cnt)
+		if (stat == 0) {
+			ERR_DIALOG strf(strmap(STR_FAILCOPYAX), dishFiles(cnt))
+		}
+	loop
+	return
+
+#deffunc makeHtml local _fn, local _buf, local _env, local _x, local _y, local _cts
+	_fn = exeDir + DIR_HSPJS + "\\temp.html"
+	exist _fn
+	if (strsize < 0) {
+		INFO_DIALOG strf(strmap(STR_FILENOTEXIST), _fn)
+		return
+	}
+	sdim _buf, strsize * 3
+	bload _fn, _buf
+	sdim _env
+	_x = getIniData("wx", "640")
+	_y = getIniData("wy", "480")
+	_env += strf("\"HSP_WX\":\"%s\",\"HSP_WY\":\"%s\",", _x, _y)
+	_x = getIniData("sx", _x)
+	_y = getIniData("sy", _y)
+	_env += strf("\"HSP_SX\":\"%s\",\"HSP_SY\":\"%s\",", _x, _y)
+	_env += strf("\"HSP_LIMIT_STEP\":\"%s\"", getIniData("step", "5000"))
+	getHtmlContents _cts, _x, _y
+	strrep _buf, "___DISH_ENV___",      _env
+	strrep _buf, "___TITLE___",         getIniData("Title", fname)
+	strrep _buf, "___CANVAS_WIDTH___",  _x
+	strrep _buf, "___CANVAS_HEIGHT___", _y
+	strrep _buf, "___DIR_PREDATA___",   projOutFolder
+	strrep _buf, "___AX_FILE___",       fname + ".ax"
+	strrep _buf, "___PRELOAD_FILES___", prefiles
+	strrep _buf, "___CSS___",           dishOutFolder + "/" + dishFiles(3)
+	strrep _buf, "___JS_LOAD___",       dishOutFolder + "/" + dishFiles(2)
+	strrep _buf, "___JS_DISH___",       dishOutFolder + "/" + dishFiles(0)
+	strrep _buf, "___HTML_HEAD___",     _cts(0)
+	strrep _buf, "___HTML_FOOT___",     _cts(1)
+	strrep _buf, "___RESIZABLE___",     _cts(2)
+	strrep _buf, "___STYLE___",         _cts(3)
+	if (fNameIndex) {
+		_fn = "index"
+	} else {
+		_fn = fname
+	}
+	bsave outDir + _fn + ".html", _buf, strlen(_buf)
+	return
+
+#deffunc getHtmlContents array _cts, str _x, str _y, local _s
+	sdim _cts, 64, 4 ; head, foot, resize, style
+	_s = getIniData("StyleTextColor", "")
+	if (_s != "") {
+		_cts(3) += strf("body{color:%s;}#spinner{border-color:%s;}", _s, _s)
+	}
+	_s = getIniData("StyleBgColor", "")
+	if (_s != "") {
+		_cts(3) += strf("body{background-color:%s;}", _s)
+	}
+	_cts(3) += getIniData("Style", "")
+	if (fAutoResize == 1 && fDebugMode == 0) {
+		_cts(2) += "true"
+		_cts(3) += "*{margin:0;}#header,#footer{display:none;}"
+	} else {
+		if (fDebugMode) {
+			_cts(1) += "<textarea id=\"output\" rows=\"8\"></textarea><br>"
+		}
+		_cts(2) += "false"
+		_cts(3) += strf(".emscripten_border{weight:%spx;height:%spx;}", _x, _y)
+		_cts(0) += getIniData("HtmlHeader", "")
+		_cts(1) += getIniData("HtmlFooter", "")
+	}
 	return
