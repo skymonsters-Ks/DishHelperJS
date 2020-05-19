@@ -1,15 +1,17 @@
 body{
-	color:#111;
-	background-color:#dec;
+	color:#ccc;
+	background-color:#222;
+	text-align:center;
 }
 .emscripten_border{
 	position:relative;
+	margin:0 auto;
 }
 #spinner{
 	position:absolute;
 	top:20px;
 	left:20px;
-	border:2px solid #111;
+	border:2px solid #ccc;
 	height:1em;
 	width:1em;
 	animation:rotation 1.2s linear infinite;
@@ -31,6 +33,7 @@ body{
 #output{
 	font-family:monospace;
 	width:80%;
+	margin:0 auto;
 }
 #header{
 	margin-bottom:1em;
