@@ -1,5 +1,5 @@
 #define global APPNAME "DishHelperJS"
-#define global APPVER  "v.0.1.8.0"
+#define global APPVER  "v.0.1.9.0"
 #define global SITEURL "https://github.com/skymonsters-Ks/DishHelperJS"
 
 #packopt name "hsp3dh_js"
@@ -580,12 +580,12 @@
 	_x = getIniData("wx", "640")
 	_y = getIniData("wy", "480")
 	_env += strf("\"HSP_WX\":\"%s\",\"HSP_WY\":\"%s\",", _x, _y)
-	_z = double(getIniData("zoom", "1"))
+	_z = double(getIniData("Zoom", "1"))
 	if (_z < 0) : _z = 1.0
 	_x = str(int(_z * _x))
 	_y = str(int(_z * _y))
 	_env += strf("\"HSP_SX\":\"%s\",\"HSP_SY\":\"%s\",", _x, _y)
-	_env += strf("\"HSP_LIMIT_STEP\":\"%s\"", getIniData("step", "5000"))
+	_env += strf("\"HSP_LIMIT_STEP\":\"%s\"", getIniData("Step", "5000"))
 	getHtmlContents _cts, _x, _y
 	strrep _buf, "___DISH_ENV___",      _env
 	strrep _buf, "___TITLE___",         getIniData("Title", fname)

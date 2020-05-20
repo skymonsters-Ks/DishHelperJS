@@ -372,7 +372,7 @@
 			_c = strsize
 			_ts = strtrim(_ts)
 			if (_ts != "") {
-				key(num) = _ts
+				key(num) = getpath(_ts, 16)
 				getstr _ts, _ld, _c
 				data(num) = strtrim(_ts)
 				num++
@@ -382,11 +382,12 @@
 	}
 	return num
 
-#defcfunc getIniData str _key, str _def, local _res
+#defcfunc getIniData str _key, str _def, local _res, local _k
 	_res = ""
+	_k = getpath(_key, 16)
 	if (exists) {
 		repeat num
-			if (key(cnt) == _key) {
+			if (key(cnt) == _k) {
 				_res = data(cnt)
 				break
 			}
