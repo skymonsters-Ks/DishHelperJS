@@ -69,23 +69,11 @@ var Module = {
 Module.setStatus('Loading...');
 
 if (RESIZABLE) window.onresize = ()=> {
-	const
-		w = window.innerWidth,
-		h = window.innerHeight,
-		cs = Module.canvas.style,
-		cw = Module.canvas.width,
-		ch = Module.canvas.height,
-		nw = h * cw / ch,
-		nh = w * ch / cw;
-	if (w * ch / cw > h) {
-		cs.width = nw + 'px';
-		cs.top = '0';
-		cs.left = (w - nw) / 2 + 'px';
-	} else {
-		cs.width = '100%';
-		cs.top = (h - nh) / 2 + 'px';
-		cs.left = '0';
-	}
+	const c = Module.canvas;
+	c.style.top = '50%';
+	c.style.left = '50%';
+	c.style.transform = 'translate(-50%,-50%)' +
+		`scale(${Math.min(window.innerWidth / c.width, window.innerHeight / c.height)})`;
 };
 
 window.onerror = ()=> {
